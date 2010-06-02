@@ -11,12 +11,14 @@ class Magazine < ActiveRecord::Base
 
 	def crawl_contents
 		pages.each(&:destroy)
-		self.issue_name = "test"
+		self.issue_name = "nameless issue"
 		self.save
 
 		start_page = pages.build :url => url, :article_nr => 1, :classification => "cover"
 		start_page.crawl_page_content
 		start_page.save
+		self.issue_name = start_page.title
+		self.save
 		start_page.crawl_toc
 	end
 
