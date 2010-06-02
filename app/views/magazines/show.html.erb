@@ -1,0 +1,11 @@
+<h1>Name: <%= h @magazine.issue_name %></h1>
+<p><%= link_to "Download as PDF", magazine_path(@magazine, :format => :pdf) %> <%= link_to "Refresh", [:edit, @magazine] %> <%= link_to "Delete", @magazine, :method => :delete %></p>
+
+<p>Pages:</p>
+<ol>
+  <% @magazine.pages.each do |page| %>
+    <li><%= page.classification %> - <%= page.article_nr %> - <%= h page.title %></li>
+    <p><%= h page.html_content %></p>
+  <% end %>
+</ol>
+

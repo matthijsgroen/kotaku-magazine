@@ -1,0 +1,10 @@
+<h1>Magazine#index</h1>
+<p>Find me in app/views/magazine/index.html.erb</p>
+
+<%= link_to "Create a new issue", new_magazine_path %>
+
+<ol>
+  <% @magazines.each do |magazine| %>
+    <li><%= h magazine.issue_name %> - <%= link_to "show", magazine %></li>  
+  <% end %>
+</ol>
