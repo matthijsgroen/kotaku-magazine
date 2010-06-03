@@ -1,5 +1,10 @@
 <h1>Name: <%= h @magazine.issue_name %></h1>
-<p><%= link_to "Download as PDF", magazine_path(@magazine, :format => :pdf) %> <%= link_to "Refresh", [:edit, @magazine] %> <%= link_to "Delete", @magazine, :method => :delete %></p>
+<p>
+  <%= link_to "Download as PDF", magazine_path(@magazine, :format => :pdf) %>
+  <%= link_to "Refresh", [:edit, @magazine] %>
+  <%= link_to "Delete", @magazine, :method => :delete %>
+  <%= link_to "Index", magazines_path %>
+</p>
 
 <p>Pages:</p>
 <ol>

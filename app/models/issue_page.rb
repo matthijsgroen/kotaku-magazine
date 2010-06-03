@@ -28,10 +28,14 @@ class IssuePage < ActiveRecord::Base
 			counter += 1 
 			section = (article.parent.preceding.filter "h2:last").first.inner_text.downcase
 			link_url = article.at("a").attributes["href"]
-			
-			page = issue.pages.build :url => link_url, :article_nr => counter, :classification => section
-			page.crawl_page_content
-			page.save
+
+			begin
+				uri = URI.parse link_url
+				page = issue.pages.build :url => link_url, :article_nr => counter, :classification => section
+				page.crawl_page_content
+				page.save
+			rescue
+			end
 		end
 	end
 

@@ -4,6 +4,7 @@ module MagazinesHelper
 		image_selection.each do |image|
 			image_url = image.parent.attributes["href"]
 			image_url ||= image.attributes["src"]
+			image_url = image.attributes["src"] unless image_url.ends_with? ".jpg"
 			#pdf.text image_url
 			pdf.image open(image_url)
 		end
@@ -87,17 +88,18 @@ module MagazinesHelper
 				when "img" then return parse_image(element, options)
 				when "em", "i" then return wrap_element(element, options, "i")
 				when "strong", "b" then return wrap_element(element, options, "b")
+				when "u" then return wrap_element(element, options, "u")
 				when "strike", "s" then return wrap_element(element, options, "strikethrough")
 				when "center" then return change_markup(element, { :align => :center }.reverse_merge(options))
 				when "span" then return parse_span(element, options)
 				when "font" then return parse_font(element, options)
 				when "div" then return element.children.collect { |element| parse_element element, options } if element.children
 				when "h2", "h3" then return parse_children_as(:header, element, { :prefix => "\n"}.reverse_merge(options))
-				when "ul" then return change_markup(element, { :indent => (options[:indent] || 0) + 20 }.reverse_merge(options))
+				when "ul", "blockquote" then return change_markup(element, { :indent => (options[:indent] || 0) + 20 }.reverse_merge(options))
 				when "li" then return parse_children_as(:bullet, element, { :prefix => "<color rgb=\"#ea1953\">*</color> "}.reverse_merge(options))
 				when "br" then return { :type => :text, :content => "" }
 				# ignore these elements
-				when "form" then return nil
+				when "form", "object" then return nil
 				else raise "unknown: #{element.name}: #{element.to_s}"
 			end
 		elsif element.text?
@@ -332,6 +334,7 @@ module MagazinesHelper
 	def remove_double_breaks(text)
 		text.gsub("&mdash;", "-")
 		text.gsub("\n", "")
+		text.gsub("\t", "")
 	end
 
 end
