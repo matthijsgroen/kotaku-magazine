@@ -6,7 +6,7 @@ module MagazinesHelper
 			image_url ||= image.attributes["src"]
 			image_url = image.attributes["src"] unless image_url.ends_with? ".jpg"
 			#pdf.text image_url
-			pdf.image open(image_url)
+			pdf.image open(image_url), :fit => [600, 800]
 		end
 	end
 
