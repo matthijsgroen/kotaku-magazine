@@ -33,7 +33,7 @@ require "open-uri"
 	EndOfIssue
 	create_pdf_article pdf, Hpricot(remove_double_breaks(last_page_content), :fixup_tags => true), @magazine, "Credits for compilation", "End of issue"
 
-	sections = @magazine.pages.collect(&:classification).uniq
+	sections = @magazine.pages.collect(&:classification).uniq - ["cover"]
 
 	if sections
 		pdf.define_outline do |outline|
