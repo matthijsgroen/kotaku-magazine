@@ -13,6 +13,7 @@ module MagazinesHelper
 	def create_pdf_article(pdf, content, issue, section_name, title = "")
 		pdf.start_new_page(:left_margin => 50, :right_margin => 50, :top_margin => 55, :bottom_margin => 50)
 		start_page = pdf.page_count
+		pdf.add_dest "page#{start_page}", [pdf.state.page.dictionary, :Fit]
 		(content / ".gallery_image, .gallery_pre").remove
 
 		contact_info = (content / ".contactinfo").remove
@@ -382,9 +383,18 @@ module MagazinesHelper
 		result
 	end
 
+
+	#/D [ 3 0 R /FitR –4 399 199 533 ]
 	def parse_link(link, options)
 		if (link / "img").empty?
-			return apply_markup({ :type => :text, :content => "<link href=\"#{link.attributes["href"]}\"><color rgb=\"#ea1953\">#{link.inner_text}</color></link>" }, options) unless link.inner_text.blank?
+			destination = link.attributes["href"]
+			page_nr = ""
+			page = @page_index[destination]
+			if page
+				page_nr = " - page #{page}"
+				return apply_markup({ :type => :text, :content => "<link anchor=\"page#{page}\"><color rgb=\"#ea1953\">#{link.inner_text}#{page_nr}</color></link>" }, options) unless link.inner_text.blank?
+			end
+			return apply_markup({ :type => :text, :content => "<link href=\"#{destination}\"><color rgb=\"#ea1953\">#{link.inner_text}#{page_nr}</color></link>" }, options) unless link.inner_text.blank?
 		else
 			return { :type => :image, :content => link.attributes["href"] }
 		end

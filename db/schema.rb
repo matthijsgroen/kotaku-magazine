@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20100602081742) do
+ActiveRecord::Schema.define(:version => 20100603150426) do
 
   create_table "issue_pages", :force => true do |t|
     t.integer  "issue_id"
@@ -20,6 +20,7 @@ ActiveRecord::Schema.define(:version => 20100602081742) do
     t.string   "url"
     t.string   "classification"
     t.string   "title"
+    t.string   "page_nr"
   end
 
   create_table "magazines", :force => true do |t|

@@ -1,13 +1,5 @@
 class MagazinesController < ApplicationController
 
-	prawnto :prawn=> { :page_layout => :portrait,
-										 :page_size => 'A4',
-										 :left_margin => 0,
-										 :right_margin => 0,
-										 :top_margin => 0,
-										 :bottom_margin => 0
-								   }, :inline => false
-
 	def index
 		@magazines = Magazine.all
   end
@@ -17,7 +9,21 @@ class MagazinesController < ApplicationController
 
 		respond_to do |format|
 			format.html # show.html.erb
-			format.pdf { render :layout => false } # show.pdf.prawn
+			format.pdf {
+				prawnto :prawn=> {
+					:page_layout => :portrait,
+					:page_size => 'A4',
+					:left_margin => 0,
+					:right_margin => 0,
+					:top_margin => 0,
+					:bottom_margin => 0,
+					:info => {
+						:Title => @magazine.issue_name, :Author => "Matthijs Groen",
+						:CreationDate => Time.now
+					}
+				}, :inline => false
+				render :layout => false
+			} # show.pdf.prawn
 		end
 	end
 
