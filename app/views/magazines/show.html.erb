@@ -9,8 +9,9 @@
 <p>Pages:</p>
 <ol>
   <% @magazine.pages.each do |page| %>
-    <li><%= page.classification %> - <%= page.article_nr %> - <%= h page.title %></li>
-    <p><%= h page.html_content %></p>
+    <li><%= page.classification %> - <%= page.article_nr %> - <%= h page.title %>
+      <p><%= h page.html_content %></p>
+    </li>
   <% end %>
 </ol>
 

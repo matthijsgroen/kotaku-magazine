@@ -11,16 +11,114 @@ module MagazinesHelper
 	end
 
 	def create_pdf_article(pdf, content, issue, section_name, title = "")
-		pdf.start_new_page(:left_margin => 50, :right_margin => 50, :top_margin => 60, :bottom_margin => 50)
+		pdf.start_new_page(:left_margin => 50, :right_margin => 50, :top_margin => 55, :bottom_margin => 50)
 		start_page = pdf.page_count
 		(content / ".gallery_image, .gallery_pre").remove
 
+		contact_info = (content / ".contactinfo").remove
 		picture_gallery = (content / "#thumb_list").remove
-
-		pdf_elements = content.children.first.children.collect { |element| parse_element element }.flatten.compact
 
 		pdf.text "<color rgb=\"#ea1953\">#{title}</color>", :align => :center, :size => 18, :inline_format => true unless title.blank?
 
+		merged_elements = convert_pdf content.children.first.children
+		merged_elements << { :type => :gallery, :content => picture_gallery } if picture_gallery
+		merged_elements.each do |element|
+			case element[:type]
+				when :text then begin
+					pdf.indent(element[:indent] || 0) do
+						text = element[:content]
+						text += "\n" unless text.ends_with? "\n"
+						pdf.text text, :inline_format => true, :align => (element[:align] || :left), :leading => 5, :size => 9
+					end
+				end
+				when :header then begin
+					pdf.fill_color "ea1953"
+					pdf.text element[:content], :inline_format => true, :align => (element[:align] || :left), :size => 14, :leading => 15
+					pdf.fill_color "000000"
+				end
+				when :bullet then begin
+					pdf.indent(element[:indent] || 0) do
+						pdf.text element[:content], :inline_format => true, :align => (element[:align] || :left), :leading => 5
+					end
+				end
+				when :image then begin
+					begin
+						pdf.image open(element[:content]), :max => [500, 650], :position => :center
+					rescue StandardError => e
+						raise "Image error in \"#{title}\": #{element[:content]} #{e}"
+					end
+					pdf.text " "
+				end
+				when :gallery then begin
+					left_height, right_height = 0, 0
+					img_position = :right
+					correct_page_flow = false
+					(element[:content] / "img").each do |image|
+
+						img_position = img_position == :left ? :right : :left
+						cur_page = pdf.page_count
+
+						img_options = { :max => [240, 350], :position => img_position }
+						img_info = pdf.image open(image.attributes["src"].gsub("gallery_", "")), img_options
+						w,h = pdf.send :calc_image_dimensions, img_info, img_options
+						left_height = h if img_position == :left
+						right_height = h if img_position == :right
+
+						if correct_page_flow
+							pdf.move_down 10
+							img_position = :right
+							correct_page_flow = false
+						else
+							pdf.move_up h if img_position == :left
+							pdf.move_down left_height - right_height if img_position == :right and left_height > right_height
+							pdf.move_down 10 if img_position == :right
+
+							if cur_page != pdf.page_count and img_position == :right
+								pdf.move_up h + 10
+								correct_page_flow = true
+							end
+						end
+					end
+				end
+			end
+		end
+
+		contact = ""
+		contact = " - #{contact_info.inner_text}" if contact_info and not contact_info.inner_text.blank?
+
+		(start_page .. pdf.page_count).each do |index|
+			pdf.go_to_page(index)
+			pdf.image open("#{Rails.public_path}/images/background_tile.jpg"), :at => [-50, 800], :width => 40, :height => 900
+			pdf.image open("#{Rails.public_path}/images/logo.png"), :at => [-30, 780], :height => 30
+			if title.blank?
+				pdf.draw_text "#{section_name}", :at => [100, 780], :inline_format => true
+			else
+				pdf.draw_text "#{section_name}", :at => [90, 765], :size => 12, :style => :bold, :inline_format => true
+				pdf.draw_text "#{title}", :at => [90, 755], :size => 8, :style => :italic, :inline_format => true
+			end
+
+			pdf.line_width = 2
+			pdf.stroke_color "ea1953"
+			pdf.stroke_line [0, -10, 500, -10]
+
+			pdf.line_width = 2
+			pdf.stroke_color "d4fd5c"
+			pdf.fill_color "ea1953"
+			pdf.circle_at [530, 780], :radius => 30
+			pdf.fill_and_stroke
+			pdf.fill_color "ffffff"
+
+			pdf.draw_text "#{index}", :at => [520, 770], :size => 18 if index < 10
+			pdf.draw_text "#{index}", :at => [515, 770], :size => 18 if index >= 10 and index < 100
+			pdf.draw_text "#{index}", :at => [510, 770], :size => 18 if index >= 100
+
+			pdf.fill_color "000000"
+			pdf.draw_text "#{issue.issue_name} - Page #{index} #{contact}", :at => [0, -25], :size => 8
+		end
+	end
+
+	def convert_pdf(elements)
+		pdf_elements = elements.collect { |element| parse_element element }.flatten.compact
 		merged_elements = []
 		pdf_elements.each do |element|
 			last = merged_elements.last || { :type => :unknown }
@@ -30,50 +128,9 @@ module MagazinesHelper
 				merged_elements << element
 			end
 		end
-		merged_elements.each do |element|
-			case element[:type]
-				when :text then begin
-					pdf.indent(element[:indent] || 0) do
-						text = element[:content]
-						text += "\n" unless text.ends_with? "\n"
-						pdf.text text, :inline_format => true, :align => (element[:align] || :left), :leading => 5
-					end
-				end
-				when :header then begin
-					pdf.text element[:content], :inline_format => true, :align => (element[:align] || :left), :size => 14, :leading => 15
-				end
-				when :bullet then begin
-					pdf.indent(element[:indent] || 0) do
-						pdf.text element[:content], :inline_format => true, :align => (element[:align] || :left), :leading => 5
-					end
-				end
-				when :image then begin
-					pdf.image open(element[:content]), :max => [500, 700], :align => :center
-					pdf.text " "
-				end
-			end
-		end
-		if picture_gallery
-			(picture_gallery / "img").collect do |image|
-				pdf.image open(image.attributes["src"].gsub("gallery_", "")), :max => [500, 700], :align => :center
-				pdf.text " "
-			end
-		end
-
-		(start_page .. pdf.page_count).each do |index|
-			pdf.go_to_page(index)
-			pdf.image open("#{Rails.public_path}/images/background_tile.jpg"), :at => [-50, 800], :width => 40, :height => 900
-			pdf.image open("#{Rails.public_path}/images/logo.png"), :at => [-30, 780], :height => 30
-			if title.blank?
-				pdf.draw_text "#{section_name}", :at => [100, 780]
-			else
-				pdf.draw_text "#{section_name}", :at => [90, 765], :size => 12, :style => :bold
-				pdf.draw_text "#{title}", :at => [90, 755], :size => 8, :style => :italic
-			end
-
-			pdf.draw_text "#{issue.issue_name} - Page #{index}", :at => [0, -30]
-		end
+		merged_elements
 	end
+
 
 	def same_style?(a, b)
 		a[:align] == b[:align] and
@@ -93,8 +150,8 @@ module MagazinesHelper
 				when "center" then return change_markup(element, { :align => :center }.reverse_merge(options))
 				when "span" then return parse_span(element, options)
 				when "font" then return parse_font(element, options)
-				when "div" then return element.children.collect { |element| parse_element element, options } if element.children
-				when "h2", "h3" then return parse_children_as(:header, element, { :prefix => "\n"}.reverse_merge(options))
+				when "div" then return parse_div(element, options)
+				when "h2", "h3" then return parse_children_as(:header, element, options)
 				when "ul", "blockquote" then return change_markup(element, { :indent => (options[:indent] || 0) + 20 }.reverse_merge(options))
 				when "li" then return parse_children_as(:bullet, element, { :prefix => "<color rgb=\"#ea1953\">*</color> "}.reverse_merge(options))
 				when "br" then return { :type => :text, :content => "" }
@@ -106,6 +163,24 @@ module MagazinesHelper
 			return apply_markup({ :type => :text, :content => element.inner_text }, options) unless element.inner_text.blank?
 		end
 		nil
+	end
+
+	def parse_div(element, options)
+		if element.attributes["class"] == "GalleryPreview"
+			return (element / "h3").collect do |header|
+				result = []
+				result << { :type => :header, :content => header.inner_text }
+				address = header.at("a").attributes["href"]
+				gallery_page = IssuePage.new :url => address
+				gallery_page.crawl_page_content
+				page_content = Hpricot(remove_double_breaks(gallery_page.html_content), :fixup_tags => true)
+
+				picture_gallery = (page_content / "#thumb_list").remove
+				result << { :type => :gallery, :content => picture_gallery }
+				result
+			end
+		end
+		return element.children.collect { |element| parse_element element, options } if element.children
 	end
 
 	def wrap_element(element, options, wrap)
@@ -308,7 +383,11 @@ module MagazinesHelper
 	end
 
 	def parse_link(link, options)
-		return apply_markup({ :type => :text, :content => "<link href=\"#{link.attributes["href"]}\"><color rgb=\"#ea1953\">#{link.inner_text}</color></link>" }, options) unless link.inner_text.blank?
+		if (link / "img").empty?
+			return apply_markup({ :type => :text, :content => "<link href=\"#{link.attributes["href"]}\"><color rgb=\"#ea1953\">#{link.inner_text}</color></link>" }, options) unless link.inner_text.blank?
+		else
+			return { :type => :image, :content => link.attributes["href"] }
+		end
 		nil
 	end
 
@@ -318,7 +397,7 @@ module MagazinesHelper
 
 	def parse_children_as(type, header, options)
 		[apply_markup({ :type => type, :content => (options.delete(:prefix) || ""), :clear => options[:clear].nil? ? true : options[:clear] }, options)] +  
-		header.children.collect { |element| parse_element element, options }.flatten.compact.collect do |content|
+		(header.children || []).collect { |element| parse_element element, options }.flatten.compact.collect do |content|
 			content[:type] = type if content[:type] == :text
 			content
 		end +
@@ -332,9 +411,9 @@ module MagazinesHelper
 	end
 
 	def remove_double_breaks(text)
-		text.gsub("&mdash;", "-")
-		text.gsub("\n", "")
-		text.gsub("\t", "")
+		text.gsub!("&mdash;", "-")
+		text.gsub!("\n", "")
+		text.gsub!("\t", "")
 	end
 
 end
